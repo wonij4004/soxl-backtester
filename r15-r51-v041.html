@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>동파법 백테스터 SLOT8 FIX</title>
+<style>
+html,body{margin:0;min-height:100%;background:#eef6fb;color:#243749;font:15px system-ui,-apple-system,"Noto Sans KR",sans-serif}
+#loading{max-width:680px;margin:32px auto;padding:18px;background:#fff;border:1px solid #d7e4ee;border-radius:14px;line-height:1.6}
+.err{color:#b91c1c;font-weight:700;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div id="loading">
+  <b>동파법 백테스터를 불러오는 중입니다.</b><br>
+  8분할 완전점유 시 당일 매도 슬롯 재사용 금지 수정본
+  <div id="status"></div>
+</div>
+<script>
+(async()=>{
+  const status=document.getElementById('status');
+  try{
+    const url="https://raw.githubusercontent.com/wonij4004/soxl-backtester/7c9b191c91aac0128c1bb8b9ceae7df9335026de/r15-r51-v041.html";
+    const res=await fetch(url,{cache:'no-store'});
+    if(!res.ok) throw new Error('원본 로드 실패 HTTP '+res.status);
+
+    let outer=await res.text();
+    const needle="  const text=new TextDecoder().decode(plain);";
+    if(!outer.includes(needle))
+      throw new Error('수정 위치를 찾지 못했습니다.');
+
+    const replacement="let text=new TextDecoder().decode(plain);\n\n  /* DONGPA_SLOT8_PREEXEC_FIX_20261013\n     \uc7a5 \uc2dc\uc791 \uc2dc CORE\uac00 \ucd5c\ub300 \ubd84\ud560\ub85c \uaf49 \ucc28 \uc788\uc73c\uba74,\n     \ub2f9\uc77c \ub9e4\ub3c4/\ub9cc\uae30 \uc608\uc815 lot\ub97c \ubbf8\ub9ac \uc2ac\ub86f\uc5d0\uc11c \ube7c\uc9c0 \uc54a\ub294\ub2e4.\n     \ub9e4\ub3c4\ub85c \ube48 \uc2ac\ub86f\uc740 \ub2e4\uc74c \uac70\ub798\uc77c\ubd80\ud130 \uc0ac\uc6a9\ud55c\ub2e4. */\n  {\n    const dpFixEngineSource=(s)=>{\n      s=s.split('knownSlots=preCount-expiryCount').join('knownSlots=preCount');\n\n      // 8\ubd84\ud560 \uc2ac\ub86f \uc218\uc815\uc73c\ub85c \ubc14\ub00c\ub294 2020-01-02~2026-09-11 \uc778\uc99d\uc9c0\ubb38\n      const reps=[\n        ['1785054.67','1725254.76'],\n        ['1974496.47','1908682.03'],\n        ['2325425.35','2248190.07'],\n        ['2524345.21','2441461.92'],\n        ['117.0221073886386','115.91976926675672'],\n        ['120.3182665','119.20488170878785'],\n        ['125.77100591308206','124.63419334491581'],\n        ['128.5574749','127.41998130001035'],\n        ['-41.729935846334186','-41.806940104634'],\n        ['-41.7372410','-41.77174615157767'],\n        ['-41.55096938444266','-41.699491075877084'],\n        ['-40.9980374','-41.58847547028767'],\n        ['d.guardBlockedCount===3','d.guardBlockedCount===2']\n      ];\n      for(const [a,b] of reps)s=s.split(a).join(b);\n      return s;\n    };\n\n    // index.html / r15-r51-v041.html : \uc5d4\uc9c4\uc774 \ubcf5\ud638\ud654 \ubcf8\ubb38\uc5d0 \uc9c1\uc811 \uc874\uc7ac\n    if(text.includes('knownSlots=preCount-expiryCount')){\n      text=dpFixEngineSource(text);\n    } else {\n      // r15-sleeve-v041.html : \uc2e4\uc81c \uc5d4\uc9c4\uc774 ENGINE_B64 \uc548\uc5d0 \ub0b4\uc7a5\n      const m=text.match(/const ENGINE_B64\\s*=\\s*(['\"])([A-Za-z0-9+/=]+)\\1/);\n      if(!m) throw new Error('SLOT8 FIX: engine source not found');\n\n      const engineBytes=Uint8Array.from(atob(m[2]),c=>c.charCodeAt(0));\n      let engineText=new TextDecoder().decode(engineBytes);\n      if(!engineText.includes('knownSlots=preCount-expiryCount'))\n        throw new Error('SLOT8 FIX: target rule not found in embedded engine');\n\n      engineText=dpFixEngineSource(engineText);\n\n      const enc=new TextEncoder().encode(engineText);\n      let bin='';\n      for(let i=0;i<enc.length;i+=0x8000)\n        bin+=String.fromCharCode(...enc.subarray(i,i+0x8000));\n      const engineB64=btoa(bin);\n\n      text=text.replace(m[0],m[0].replace(m[2],engineB64));\n    }\n\n    // \ud328\uce58\uac00 \uc2e4\uc81c \uc5d4\uc9c4\uc5d0 \uc801\uc6a9\ub418\uc5c8\ub294\uc9c0 \uc2e4\ud589 \uc804 \ud655\uc778\n    if(text.includes('knownSlots=preCount-expiryCount'))\n      throw new Error('SLOT8 FIX: old rule still remains');\n  }";
+    outer=outer.replace(needle,replacement);
+
+    if(!outer.includes('DONGPA_SLOT8_PREEXEC_FIX_20261013'))
+      throw new Error('SLOT8 패치 삽입 실패');
+
+    document.open();
+    document.write(outer);
+    document.close();
+  }catch(e){
+    status.className='err';
+    status.textContent='실행 실패\n'+(e&&e.message?e.message:String(e));
+  }
+})();
+</script>
+</body>
+</html>

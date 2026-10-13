@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>동파법 백테스터 SLOT8 FIX 2026-10-13</title>
+<style>
+html,body{margin:0;min-height:100%;background:#eef6fb;color:#243749;font:15px system-ui,-apple-system,"Noto Sans KR",sans-serif}
+#box{max-width:720px;margin:34px auto;padding:20px;background:#fff;border:1px solid #d7e4ee;border-radius:16px;box-shadow:0 8px 24px rgba(23,58,86,.07)}
+h1{font-size:18px;margin:0 0 8px;color:#173a56} p{margin:6px 0;line-height:1.6} .err{color:#b91c1c;font-weight:700;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div id="box">
+  <h1>동파법 백테스터 로딩 중</h1>
+  <p>8분할 완전점유 시 당일 만기 슬롯 재사용 금지 패치를 적용합니다.</p>
+  <p id="status">기존 최종본을 불러오는 중…</p>
+</div>
+<script>
+(async()=>{
+  const status=document.getElementById('status');
+  try{
+    const url="https://raw.githubusercontent.com/wonij4004/soxl-backtester/7c9b191c91aac0128c1bb8b9ceae7df9335026de/r15-sleeve-v041.html";
+    const res=await fetch(url,{cache:'no-store'});
+    if(!res.ok)throw new Error('기존 최종본 로드 실패: HTTP '+res.status);
+    let text=await res.text();
+
+    if(text.includes('DONGPA_SLOT8_FIX_20261013')){
+      document.open();document.write(text);document.close();return;
+    }
+
+    // Current 2026-10-12 wrappers keep their UI/date helper in runtimePatch.
+    // Inject the SLOT8 correction into that helper before the encrypted app runs.
+    const needle="  'use strict';\\n  const SEALED=";
+    const injected="  'use strict';\\n  /* DONGPA_SLOT8_FIX_20261013\\n     Rule: when all CORE split slots are occupied at start of day,\\n     a lot exiting today does NOT free a same-day buy slot.\\n     The freed slot is usable from the next trading day. */\\n  function dpPatchSlot8(win){\\n    try{\\n      const f=win&&win.executeSimulation;\\n      if(typeof f!=='function'||f.__dpSlot8Fixed)return false;\\n      let s=f.toString();\\n      const old='knownSlots=preCount-expiryCount';\\n      if(s.includes(old)){\\n        s=s.replace(old,'knownSlots=preCount');\\n        const nf=win.eval('('+s+')');\\n        nf.__dpSlot8Fixed=true;\\n        win.executeSimulation=nf;\\n        return true;\\n      }\\n      f.__dpSlot8Fixed=true;\\n    }catch(_e){}\\n    return false;\\n  }\\n\\n  function dpPatchCert(win){\\n    try{\\n      const f=win&&win.renderR15Comparison;\\n      if(typeof f!=='function'||f.__dpSlot8CertFixed)return false;\\n      let s=f.toString();\\n      const reps=[\\n        ['1785054.67','1725254.76'],\\n        ['1974496.47','1908682.03'],\\n        ['2325425.35','2248190.07'],\\n        ['2524345.21','2441461.92'],\\n        ['117.0221073886386','115.91976926675672'],\\n        ['120.3182665','119.20488170878785'],\\n        ['125.77100591308206','124.63419334491581'],\\n        ['128.5574749','127.41998130001035'],\\n        ['-41.729935846334186','-41.806940104634'],\\n        ['-41.7372410','-41.77174615157767'],\\n        ['-41.55096938444266','-41.699491075877084'],\\n        ['-40.9980374','-41.58847547028767'],\\n        ['d.guardBlockedCount===3','d.guardBlockedCount===2']\\n      ];\\n      for(const [a,b] of reps)s=s.split(a).join(b);\\n      const nf=win.eval('('+s+')');\\n      nf.__dpSlot8CertFixed=true;\\n      win.renderR15Comparison=nf;\\n      return true;\\n    }catch(_e){}\\n    return false;\\n  }\\n\\n  function dpApplySlot8Fix(){\\n    dpPatchSlot8(window);\\n    dpPatchCert(window);\\n    try{\\n      const fr=document.getElementById('engineFrame');\\n      if(fr&&fr.contentWindow){\\n        dpPatchSlot8(fr.contentWindow);\\n        dpPatchCert(fr.contentWindow);\\n      }\\n    }catch(_e){}\\n  }\\n\\n  dpApplySlot8Fix();\\n  setInterval(dpApplySlot8Fix,50);\\n  const SEALED=";
+
+    if(!text.includes(needle))
+      throw new Error('패치 삽입 위치를 찾지 못했습니다. 파일 버전을 확인하세요.');
+
+    text=text.replace(needle,injected);
+    document.open();document.write(text);document.close();
+  }catch(e){
+    status.className='err';
+    status.textContent='실행 실패\n'+(e&&e.message?e.message:String(e));
+  }
+})();
+</script>
+</body>
+</html>

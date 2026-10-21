@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>동파법 FINAL A/B/C/D</title>
+<style>
+html,body{margin:0;min-height:100%;background:#eef6fb;color:#243749;font:15px system-ui,-apple-system,"Noto Sans KR",sans-serif}
+#loading{max-width:680px;margin:32px auto;padding:18px;background:#fff;border:1px solid #d7e4ee;border-radius:14px;line-height:1.6}
+.err{color:#b91c1c;font-weight:700;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div id="loading">
+  <b>동파법 FINAL A/B/C/D를 불러오는 중입니다.</b>
+  <div id="status"></div>
+</div>
+<script>
+(async()=>{
+  const status=document.getElementById('status');
+  try{
+    const res=await fetch("https://raw.githubusercontent.com/wonij4004/soxl-backtester/7c9b191c91aac0128c1bb8b9ceae7df9335026de/r15-sleeve-v041.html",{cache:'no-store'});
+    if(!res.ok)throw new Error('기준본 로드 실패 HTTP '+res.status);
+
+    let outer=await res.text();
+    const needle="  const text=new TextDecoder().decode(plain);";
+    if(!outer.includes(needle))
+      throw new Error('복호화 엔진 삽입 위치를 찾지 못했습니다.');
+
+    outer=outer.replace(needle,()=>"let text=new TextDecoder().decode(plain);\n\n  /* DONGPA_SLOT8_AND_SLEEVE_BRIDGE_FIX_20261013 */\n  {\n    const dpFixEngineSource=(s)=>{\n      /* 1) CORE 8\ubd84\ud560: \ub2f9\uc77c \ub9cc\uae30/\ub9e4\ub3c4 \uc608\uc815 \uc2ac\ub86f\uc744 \ub2f9\uc77c \uc2e0\uaddc\ub9e4\uc218\uc5d0 \uc7ac\uc0ac\uc6a9\ud558\uc9c0 \uc54a\ub294\ub2e4. */\n      const oldSlot='knownSlots=preCount-expiryCount';\n      if(!s.includes(oldSlot))\n        throw new Error('SLOT8 FIX: target rule not found');\n      s=s.split(oldSlot).join('knownSlots=preCount');\n\n      /* 2) r15-sleeve outer UI\uac00 \uc694\uad6c\ud558\ub294 getABCDForRange bridge \ubcf5\uad6c */\n      if(!s.includes('getABCDForRange')){\n        const apiNeedle='window.dongpaFull={sync:syncFull,recalculate:recalculateFull,';\n        if(!s.includes(apiNeedle))\n          throw new Error('SLEEVE FIX: dongpaFull API location not found');\n\n        const bridge=`function getABCDForRange(start,end){\n try{\n  if(!fullDb)return {ok:false,error:fullPending?'\uccab \uc6d0\uc7a5 \uc5f0\uacb0\uc774 \uc9c4\ud589 \uc911\uc785\ub2c8\ub2e4.':'\uc0ac\uc6a9 \uac00\ub2a5\ud55c \uc131\uacf5 \uc790\ub8cc\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.'};\n  const sEl=document.getElementById('startDate');\n  const eEl=document.getElementById('endDate');\n  const fEl=document.getElementById('followLatest');\n  if(sEl)sEl.value=start;\n  if(eEl)eEl.value=end;\n  if(fEl)fEl.checked=false;\n\n  prepareFullRange();\n  const params=collectR15Params();\n\n  const A=executeSimulation({...params,variant:'A0',useSleeve:false},rawPriceData,rawModeData);\n  const B=executeSimulation({...params,variant:'B0',useSleeve:false},rawPriceData,rawModeData);\n  const C=executeSimulation({...params,variant:'C0',useSleeve:true},rawPriceData,rawModeData);\n  const D=executeSimulation({...params,variant:'C2',useSleeve:true},rawPriceData,rawModeData);\n\n  if(!A||!B||!C||!D)return {ok:false,error:'\uacc4\uc0b0 \uacb0\uacfc \uc5c6\uc74c'};\n  if(!A.history?.length)return {ok:false,error:'\uc120\ud0dd\uae30\uac04\uc5d0 \uacc4\uc0b0\ub41c \uac70\ub798\uc77c\uc774 \uc5c6\uc2b5\ub2c8\ub2e4.'};\n  const actualStart=dateKeyLocal(A.history[0].date);\n  const actualEnd=dateKeyLocal(A.history[A.history.length-1].date);\n  return {ok:true,latest:fullDb.last,actualStart,actualEnd,A,B,C,D};\n }catch(e){\n  return {ok:false,error:e&&e.message?e.message:String(e)};\n }\n}\n`;\n        s=s.replace(\n          apiNeedle,\n          bridge+'window.dongpaFull={sync:syncFull,recalculate:recalculateFull,getABCDForRange,'\n        );\n      }\n\n      /* 3) SLOT8 \uc218\uc815\uc73c\ub85c \ubc14\ub00c\ub294 \uae30\uc874 \uc778\uc99d\uc9c0\ubb38 */\n      const reps=[\n        ['1785054.67','1725254.76'],\n        ['1974496.47','1908682.03'],\n        ['2325425.35','2248190.07'],\n        ['2524345.21','2441461.92'],\n        ['117.0221073886386','115.91976926675672'],\n        ['120.3182665','119.20488170878785'],\n        ['125.77100591308206','124.63419334491581'],\n        ['128.5574749','127.41998130001035'],\n        ['-41.729935846334186','-41.806940104634'],\n        ['-41.7372410','-41.77174615157767'],\n        ['-41.55096938444266','-41.699491075877084'],\n        ['-40.9980374','-41.58847547028767'],\n        ['d.guardBlockedCount===3','d.guardBlockedCount===2']\n      ];\n      for(const [a,b] of reps)s=s.split(a).join(b);\n\n      if(s.includes(oldSlot))\n        throw new Error('SLOT8 FIX: old rule still remains');\n      if(!s.includes('getABCDForRange'))\n        throw new Error('SLEEVE FIX: bridge not installed');\n\n      return s;\n    };\n\n    const m=text.match(/const ENGINE_B64\\s*=\\s*(['\"])([A-Za-z0-9+/=]+)\\1/);\n    if(!m) throw new Error('SLEEVE FIX: ENGINE_B64 not found');\n\n    const engineBytes=Uint8Array.from(atob(m[2]),c=>c.charCodeAt(0));\n    let engineText=new TextDecoder().decode(engineBytes);\n    engineText=dpFixEngineSource(engineText);\n\n    const enc=new TextEncoder().encode(engineText);\n    let bin='';\n    for(let i=0;i<enc.length;i+=0x8000)\n      bin+=String.fromCharCode(...enc.subarray(i,i+0x8000));\n    const engineB64=btoa(bin);\n\n    text=text.replace(m[0],m[0].replace(m[2],engineB64));\n  }");
+
+    if(!outer.includes('DONGPA_SLOT8_AND_SLEEVE_BRIDGE_FIX_20261013'))
+      throw new Error('수정 코드 삽입 실패');
+
+    document.open();
+    document.write(outer);
+    document.close();
+  }catch(e){
+    status.className='err';
+    status.textContent='실행 실패\n'+(e&&e.message?e.message:String(e));
+  }
+})();
+</script>
+</body>
+</html>
